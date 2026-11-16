@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply m-0 font-sans text-meet-text antialiased bg-meet-surface;
+  }
+
+  *:focus-visible {
+    outline: 2px solid #1a73e8;
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .meet-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-medium transition-colors;
+  }
+
+  .meet-btn-primary {
+    @apply meet-btn bg-meet-blue text-white hover:bg-meet-blue-hover;
+  }
+
+  .meet-btn-secondary {
+    @apply meet-btn border border-meet-border bg-white text-meet-blue-text hover:bg-meet-blue-soft;
+  }
+
+  .meet-icon-btn {
+    @apply inline-flex h-12 w-12 items-center justify-center rounded-full transition-colors;
+  }
+
+  .meet-icon-btn-dark {
+    @apply meet-icon-btn bg-meet-dark-elevated text-meet-icon-light hover:bg-meet-dark-hover;
+  }
+
+  .meet-icon-btn-light {
+    @apply meet-icon-btn text-meet-text-muted hover:bg-black/5;
+  }
+}
