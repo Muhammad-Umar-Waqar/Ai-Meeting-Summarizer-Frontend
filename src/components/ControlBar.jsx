@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import {
@@ -34,7 +34,6 @@ import {
   AppsIcon,
   HandIcon,
   InfoIcon,
-  SettingsIcon,
 } from './icons/MeetIcons';
 
 function ControlButton({
@@ -44,6 +43,7 @@ function ControlButton({
   danger = false,
   children,
   wide = false,
+  badge = null,
 }) {
   return (
     <button
@@ -51,19 +51,24 @@ function ControlButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className={`${
+      className={`relative inline-flex items-center justify-center transition-colors rounded-full ${
         wide
-          ? 'inline-flex h-12 min-w-[56px] items-center justify-center rounded-control px-4'
-          : 'meet-icon-btn'
+          ? 'h-10 sm:h-12 px-3 sm:px-5'
+          : 'h-10 w-10 sm:h-12 sm:w-12 shrink-0'
       } ${
         danger
-          ? 'bg-meet-red text-white hover:bg-meet-red-dark'
+          ? 'bg-meet-red text-white hover:bg-meet-red-dark shadow-sm'
           : active
-            ? 'bg-meet-icon-light text-meet-dark hover:bg-white'
+            ? 'bg-meet-icon-light text-meet-dark hover:bg-white shadow-sm'
             : 'meet-icon-btn-dark'
-      } transition-colors`}
+      }`}
     >
       {children}
+      {badge !== null && (
+        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-meet-blue px-1 text-[10px] font-bold text-white shadow-xs">
+          {badge}
+        </span>
+      )}
     </button>
   );
 }
@@ -79,10 +84,10 @@ function MeetingClock() {
   }, [startedAt]);
 
   return (
-    <div className="flex min-w-0 items-center gap-2 text-sm text-meet-icon-light">
-      <span className="tabular-nums">{time}</span>
+    <div className="flex min-w-0 items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-meet-icon-light">
+      <span className="tabular-nums font-medium">{time}</span>
       <span className="hidden text-meet-dark-hover sm:inline">|</span>
-      <span className="hidden truncate sm:inline">{code || 'meeting'}</span>
+      <span className="hidden truncate sm:inline max-w-[120px]">{code || 'meeting'}</span>
     </div>
   );
 }
@@ -100,6 +105,20 @@ export default function ControlBar() {
   const media = useAppSelector((s) => s.media);
   const ui = useAppSelector((s) => s.ui);
   const participants = useAppSelector((s) => s.participants.list);
+  const moreMenuRef = useRef(null);
+
+  // Close more menu on outside click
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target)) {
+        dispatch(closeMoreMenu());
+      }
+    }
+    if (ui.moreMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [ui.moreMenuOpen, dispatch]);
 
   const leave = () => {
     dispatch(leaveMeeting());
@@ -115,11 +134,13 @@ export default function ControlBar() {
   };
 
   return (
-    <div className="grid h-20 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-2 text-meet-icon-light sm:px-4">
-      <div className="min-w-0 justify-self-start">
+    <footer className="relative flex h-16 sm:h-20 shrink-0 items-center justify-between px-2 sm:px-4 text-meet-icon-light bg-meet-dark border-t border-white/5 select-none">
+      {/* Left section: Clock / Info */}
+      <div className="flex items-center min-w-0 max-w-[90px] sm:max-w-none">
         <MeetingClock />
       </div>
 
+      {/* Center section: Media controls & leave call */}
       <div className="flex items-center justify-center gap-1.5 sm:gap-2.5">
         <ControlButton
           label={media.micOn ? 'Turn off microphone' : 'Turn on microphone'}
@@ -145,6 +166,7 @@ export default function ControlBar() {
           <ClosedCaptionIcon />
         </ControlButton>
 
+        {/* Hand raise: visible on sm+ screens */}
         <div className="hidden sm:block">
           <ControlButton
             label="Raise hand"
@@ -157,6 +179,7 @@ export default function ControlBar() {
           </ControlButton>
         </div>
 
+        {/* Present: visible on md+ screens */}
         <div className="hidden md:block">
           <ControlButton
             label="Present now"
@@ -167,29 +190,55 @@ export default function ControlBar() {
           </ControlButton>
         </div>
 
-        <div className="relative hidden sm:block">
+        {/* More options (Settings, Details, Hand raise on mobile) */}
+        <div className="relative" ref={moreMenuRef}>
           <ControlButton
             label="More options"
+            active={ui.moreMenuOpen}
             onClick={() => dispatch(toggleMoreMenu())}
           >
             <MoreVertIcon />
           </ControlButton>
+
           {ui.moreMenuOpen && (
-            <div
-              className="absolute bottom-14 left-1/2 z-20 w-56 -translate-x-1/2 overflow-hidden rounded-xl bg-white py-2 text-meet-text shadow-meet-lg"
-              onMouseLeave={() => dispatch(closeMoreMenu())}
-            >
+            <div className="absolute bottom-12 sm:bottom-14 left-1/2 z-50 w-56 -translate-x-1/2 overflow-hidden rounded-2xl bg-white py-2 text-meet-text shadow-2xl border border-slate-100">
+              {/* Mobile-only items in More menu */}
               <button
                 type="button"
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm hover:bg-meet-surface-alt"
-                onClick={() => dispatch(closeMoreMenu())}
+                className="flex sm:hidden w-full items-center gap-3 px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700"
+                onClick={() => {
+                  withSelfSync(toggleHand, { handRaised: !media.handRaised });
+                  dispatch(closeMoreMenu());
+                }}
               >
-                <SettingsIcon width={20} height={20} />
-                Settings
+                <HandIcon width={20} height={20} />
+                {media.handRaised ? 'Lower hand' : 'Raise hand'}
               </button>
               <button
                 type="button"
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm hover:bg-meet-surface-alt"
+                className="flex md:hidden w-full items-center gap-3 px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700"
+                onClick={() => {
+                  dispatch(togglePresent());
+                  dispatch(closeMoreMenu());
+                }}
+              >
+                <PresentToAllIcon width={20} height={20} />
+                {media.presenting ? 'Stop presenting' : 'Present screen'}
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700"
+                onClick={() => {
+                  dispatch(openSidePanel('activities'));
+                  dispatch(closeMoreMenu());
+                }}
+              >
+                <AppsIcon width={20} height={20} />
+                AI Summaries & Notes
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700"
                 onClick={() => {
                   dispatch(openSidePanel('people'));
                   dispatch(closeMoreMenu());
@@ -202,47 +251,51 @@ export default function ControlBar() {
           )}
         </div>
 
+        {/* Leave call button */}
         <ControlButton label="Leave call" danger wide onClick={leave}>
           <CallEndIcon />
         </ControlButton>
       </div>
 
+      {/* Right section: Panels triggers (People, Chat, Activities) */}
       <div className="flex items-center justify-end gap-1 sm:gap-2">
-        <ControlButton
-          label="Meeting details"
-          onClick={() => dispatch(openSidePanel('people'))}
-        >
-          <InfoIcon />
-        </ControlButton>
         <ControlButton
           label="People"
           active={ui.sidePanel === 'people'}
-          onClick={() => dispatch(openSidePanel('people'))}
+          badge={participants.length}
+          onClick={() =>
+            dispatch(
+              openSidePanel(ui.sidePanel === 'people' ? null : 'people')
+            )
+          }
         >
-          <span className="relative inline-flex">
-            <PeopleIcon />
-            <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-meet-blue px-1 text-[10px] text-white">
-              {participants.length}
-            </span>
-          </span>
+          <PeopleIcon />
         </ControlButton>
+
         <ControlButton
           label="Chat with everyone"
           active={ui.sidePanel === 'chat'}
-          onClick={() => dispatch(openSidePanel('chat'))}
+          onClick={() =>
+            dispatch(openSidePanel(ui.sidePanel === 'chat' ? null : 'chat'))
+          }
         >
           <ChatIcon />
         </ControlButton>
+
         <div className="hidden sm:block">
           <ControlButton
-            label="Activities"
+            label="AI Activities"
             active={ui.sidePanel === 'activities'}
-            onClick={() => dispatch(openSidePanel('activities'))}
+            onClick={() =>
+              dispatch(
+                openSidePanel(ui.sidePanel === 'activities' ? null : 'activities')
+              )
+            }
           >
             <AppsIcon />
           </ControlButton>
         </div>
       </div>
-    </div>
+    </footer>
   );
 }

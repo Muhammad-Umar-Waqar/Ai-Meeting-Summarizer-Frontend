@@ -14,7 +14,6 @@ export default function MeetingRoomPage() {
   const meeting = useAppSelector((s) => s.meeting);
   const media = useAppSelector((s) => s.media);
   const participants = useAppSelector((s) => s.participants.list);
-  const sidePanel = useAppSelector((s) => s.ui.sidePanel);
 
   useEffect(() => {
     if (!meeting.joined) {

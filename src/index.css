@@ -3,7 +3,11 @@
 @tailwind utilities;
 
 @layer base {
-  html,
+  html {
+    scroll-behavior: smooth;
+    height: 100%;
+  }
+
   body,
   #root {
     height: 100%;
